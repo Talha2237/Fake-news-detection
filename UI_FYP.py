@@ -11,6 +11,18 @@ torch.__streamlit__ = False  # Block Streamlit's class inspection
 import streamlit as st
 import torch.nn as nn
 from transformers import AutoModel, BertTokenizerFast, pipeline
+# app.py
+import gdown
+
+@st.cache_resource
+def load_model():
+    # Download from Google Drive
+    url = "https://drive.google.com/uc?id=YOUR_FILE_ID"
+    gdown.download(url, "c1_fakenews_weights.pt", quiet=False)
+    
+    # Load model
+    model.load_state_dict(torch.load("c1_fakenews_weights.pt"))
+    return model
 
 # --------------------------
 # STREAMLIT CONFIG
