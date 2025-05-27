@@ -17,7 +17,7 @@ import gdown
 @st.cache_resource
 def load_model():
     # Download from Google Drive
-    url = "https://drive.google.com/uc?id=YOUR_FILE_ID"
+    url = "https://drive.google.com/file/d/1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7/view?usp=drive_link"
     gdown.download(url, "c1_fakenews_weights.pt", quiet=False)
     
     # Load model
