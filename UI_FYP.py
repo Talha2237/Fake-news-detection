@@ -1,13 +1,14 @@
-# 1. Environment setup MUST COME FIRST
+
 import sys
-sys.modules['torch._classes'] = None  # Critical for Streamlit compatibility
+sys.modules['torch._classes'] = None  # Critical fix before any imports
 
 import warnings
-warnings.filterwarnings("ignore")  # Suppress unnecessary warnings
+warnings.filterwarnings("ignore")  # Suppress all warnings
 
+# Rest of imports
 import os
 import time
-import gdown  # For Google Drive downloads
+import gdown
 import torch
 import joblib
 import streamlit as st
@@ -18,6 +19,7 @@ from transformers import AutoModel, BertTokenizerFast, pipeline
 # Disable Streamlit file watcher
 os.environ["STREAMLIT_SERVER_ENABLE_FILE_WATCHER"] = "false"
 torch.__streamlit__ = False  # Block Streamlit's class inspection
+
 
 # --------------------------
 # STREAMLIT CONFIG
