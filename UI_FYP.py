@@ -8,6 +8,7 @@ import torch
 torch.__streamlit__ = False  # Block Streamlit's class inspection
 
 # 3. Other imports
+import gdown
 import streamlit as st
 import torch.nn as nn
 from transformers import AutoModel, BertTokenizerFast, pipeline
@@ -23,8 +24,6 @@ st.set_page_config(
 # --------------------------
 # MODEL LOADING (Cached)
 # --------------------------
-@st.cache_resource
-import gdown
 
 @st.cache_resource
 def load_model():
