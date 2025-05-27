@@ -29,15 +29,39 @@ st.set_page_config(
 # MODEL LOADING (Cached)
 # --------------------------
 @st.cache_resource(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def load_models():
     try:
-        # Download custom model weights from Google Drive
-        url = f"https://drive.google.com/file/d/1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7/view?usp=sharing"
+        # Clean up existing file
+        if os.path.exists("c1_fakenews_weights.pt"):
+            os.remove("c1_fakenews_weights.pt")
+        
+        # Direct download URL
+        file_id = "1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7"
+        url = f"https://drive.google.com/uc?id={file_id}"
         output_path = "c1_fakenews_weights.pt"
         
+        # Download with progress
+        with st.spinner("📥 Downloading model weights (1.2GB)..."):
+            gdown.download(url, output_path, quiet=False)
+        
+        # Verify download
         if not os.path.exists(output_path):
-            with st.spinner("📥 Downloading model weights from Google Drive..."):
-                gdown.download(url, output_path, quiet=True)
+            raise Exception("Download failed - file not created")
+            
+        # Check file is not HTML
+        with open(output_path, "rb") as f:
+            start_bytes = f.read(20)
+            if b"<html>" in start_bytes.lower():
+                os.remove(output_path)
+                raise Exception("Downloaded HTML instead of model file!")
+
+        # Rest of your model loading code...
+        return model, tokenizer, pipe_model
+
+    except Exception as e:
+        st.error(f"🚨 Error: {str(e)}")
+        st.stop()
 
         # Load BERT base model
         from transformers import logging
