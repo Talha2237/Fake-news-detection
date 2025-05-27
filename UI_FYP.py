@@ -40,6 +40,9 @@ def load_models():
                 gdown.download(url, output_path, quiet=True)
 
         # Load BERT base model
+        from transformers import logging
+        logging.set_verbosity_error()
+
         bert = AutoModel.from_pretrained('bert-base-uncased')
         tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
         
