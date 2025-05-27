@@ -12,7 +12,6 @@ import streamlit as st
 import torch.nn as nn
 from transformers import AutoModel, BertTokenizerFast, pipeline
 # app.py
--
 # STREAMLIT CONFIG
 # --------------------------
 st.set_page_config(
