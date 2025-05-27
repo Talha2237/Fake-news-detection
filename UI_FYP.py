@@ -12,19 +12,7 @@ import streamlit as st
 import torch.nn as nn
 from transformers import AutoModel, BertTokenizerFast, pipeline
 # app.py
-import gdown
-
-@st.cache_resource
-def load_model():
-    # Download from Google Drive
-    url = "https://drive.google.com/file/d/1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7/view?usp=drive_link"
-    gdown.download(url, "c1_fakenews_weights.pt", quiet=False)
-    
-    # Load model
-    model.load_state_dict(torch.load("c1_fakenews_weights.pt"))
-    return model
-
-# --------------------------
+-
 # STREAMLIT CONFIG
 # --------------------------
 st.set_page_config(
@@ -37,6 +25,21 @@ st.set_page_config(
 # MODEL LOADING (Cached)
 # --------------------------
 @st.cache_resource
+import gdown
+
+@st.cache_resource
+def load_model():
+    # Download from Google Drive
+    url = "https://drive.google.com/file/d/1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7/view?usp=drive_link"
+    gdown.download(url, "c1_fakenews_weights.pt", quiet=False)
+    
+    # Load model
+    model.load_state_dict(torch.load("c1_fakenews_weights.pt"))
+    return model
+
+# -------------------------
+
+
 def load_models():
     # Load original custom model
     bert = AutoModel.from_pretrained('bert-base-uncased')
