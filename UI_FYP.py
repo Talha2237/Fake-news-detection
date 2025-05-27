@@ -8,7 +8,6 @@ import os
 import time
 import gdown
 import torch
-import joblib
 import streamlit as st
 import torch.nn as nn
 from sklearn.feature_extraction.text import TfidfVectorizer
