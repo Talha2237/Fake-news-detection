@@ -1,18 +1,25 @@
 # 1. Environment setup MUST COME FIRST
+import sys
+sys.modules['torch._classes'] = None  # Critical for Streamlit compatibility
+
+import warnings
+warnings.filterwarnings("ignore")  # Suppress unnecessary warnings
+
 import os
 import time
-os.environ["STREAMLIT_SERVER_ENABLE_FILE_WATCHER"] = "false"
-
-# 2. PyTorch imports and workaround
+import gdown  # For Google Drive downloads
 import torch
-torch.__streamlit__ = False  # Block Streamlit's class inspection
-
-# 3. Other imports
-import gdown
+import joblib
 import streamlit as st
 import torch.nn as nn
+from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import AutoModel, BertTokenizerFast, pipeline
-# app.py
+
+# Disable Streamlit file watcher
+os.environ["STREAMLIT_SERVER_ENABLE_FILE_WATCHER"] = "false"
+torch.__streamlit__ = False  # Block Streamlit's class inspection
+
+# --------------------------
 # STREAMLIT CONFIG
 # --------------------------
 st.set_page_config(
@@ -24,62 +31,62 @@ st.set_page_config(
 # --------------------------
 # MODEL LOADING (Cached)
 # --------------------------
-
-@st.cache_resource
-def load_model():
-    # Download from Google Drive
-    url = "https://drive.google.com/file/d/1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7/view?usp=drive_link"
-    gdown.download(url, "c1_fakenews_weights.pt", quiet=False)
-    
-    # Load model
-    model.load_state_dict(torch.load("c1_fakenews_weights.pt"))
-    return model
-
-# -------------------------
-
-
+@st.cache_resource(show_spinner=False)
 def load_models():
-    # Load original custom model
-    bert = AutoModel.from_pretrained('bert-base-uncased')
-    tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
-    
-    class BERT_Arch(nn.Module):
-        def __init__(self, bert):
-            super().__init__()
-            self.bert = bert
-            self.dropout = nn.Dropout(0.1)
-            self.fc1 = nn.Linear(768, 512)
-            self.fc2 = nn.Linear(512, 2)
-            self.softmax = nn.LogSoftmax(dim=1)
+    try:
+        # Download custom model weights from Google Drive
+        file_id = "1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7"
+        url = f"https://drive.google.com/uc?id={file_id}"
+        output_path = "c1_fakenews_weights.pt"
         
-        def forward(self, sent_id, mask):
-            outputs = self.bert(sent_id, attention_mask=mask)
-            cls_hs = outputs.last_hidden_state[:, 0, :]
-            x = self.fc1(cls_hs)
-            x = torch.relu(x)
-            x = self.dropout(x)
-            x = self.fc2(x)
-            x = self.softmax(x)
-            return x
-    
-    model = BERT_Arch(bert)
-    
-    # Load state_dict with strict=False to ignore unexpected keys
-    state_dict = torch.load(
-        r'c1_fakenews_weights.pt',
-        map_location=torch.device('cpu')
-    )
-    model.load_state_dict(state_dict, strict=False)
-    model.eval()
+        if not os.path.exists(output_path):
+            with st.spinner("📥 Downloading model weights from Google Drive..."):
+                gdown.download(url, output_path, quiet=True)
 
-    # Load pretrained pipeline model
-    pipe_model = pipeline("text-classification", model="tvocoder/bert_fake_news_ft")
-    
-    return model, tokenizer, pipe_model
+        # Load BERT base model
+        bert = AutoModel.from_pretrained('bert-base-uncased')
+        tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+        
+        # Define model architecture
+        class BERT_Arch(nn.Module):
+            def __init__(self, bert):
+                super().__init__()
+                self.bert = bert
+                self.dropout = nn.Dropout(0.1)
+                self.fc1 = nn.Linear(768, 512)
+                self.fc2 = nn.Linear(512, 2)
+                self.softmax = nn.LogSoftmax(dim=1)
+            
+            def forward(self, sent_id, mask):
+                outputs = self.bert(sent_id, attention_mask=mask)
+                cls_hs = outputs.last_hidden_state[:, 0, :]
+                x = self.fc1(cls_hs)
+                x = torch.relu(x)
+                x = self.dropout(x)
+                x = self.fc2(x)
+                return self.softmax(x)
+        
+        # Initialize and load weights
+        model = BERT_Arch(bert)
+        model.load_state_dict(torch.load(output_path, map_location='cpu'), strict=False)
+        model.eval()
 
+        # Load pretrained pipeline model
+        pipe_model = pipeline("text-classification", model="tvocoder/bert_fake_news_ft")
+        
+        return model, tokenizer, pipe_model
+
+    except Exception as e:
+        st.error(f"🚨 Model loading failed: {str(e)}")
+        st.stop()
+
+# Initialize models
 model, tokenizer, pipe_model = load_models()
 
-# Rest of your UI code remains the same...
+# --------------------------
+# STREAMLIT UI COMPONENTS
+# --------------------------
+# Custom styling
 st.markdown("""
 <style>
     .reportview-container { background: #f0f2f6 }
@@ -87,6 +94,7 @@ st.markdown("""
         font-size: 16px !important; 
         padding: 10px !important; 
         border-radius: 8px !important;
+        border: 1px solid #ddd !important;
     }
     .stButton>button { 
         background: #4CAF50 !important; 
@@ -94,13 +102,18 @@ st.markdown("""
         font-weight: bold !important;
         border-radius: 8px !important;
         padding: 10px 24px !important;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover { 
+        transform: scale(1.05);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
     .model-card {
         background: white;
         border-radius: 12px;
         padding: 20px;
         margin: 10px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .comparison-card {
         background: #ffffff;
@@ -119,16 +132,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.title("🔍 Fake News Detector")
+st.title("🔍 Fake News Detection System")
 st.markdown("---")
 
 # Example selector
 examples = [
     "Select an example...",
     "Atif Aslam is a world famous Pakistani singer",  # Fake
-    "America got it's freedom from British on 4th of July",              # Real
-    "World leaders sign global climate agreement",        # Real
-    "5G networks spread coronavirus"                      # Fake
+    "America got its independence from Britain on July 4th",  # Real
+    "5G networks spread coronavirus",  # Fake
+    "NASA confirms water on Mars surface"  # Real
 ]
 
 selected_example = st.selectbox("Try a sample text:", examples)
@@ -143,13 +156,13 @@ input_text = st.text_area(
 # Prediction logic
 if st.button("🔎 Analyze Text", use_container_width=True):
     if not input_text.strip():
-        st.warning("Please enter some text to analyze!")
+        st.warning("⚠️ Please enter some text to analyze!")
     else:
-        with st.spinner("Analyzing with both models..."):
+        with st.spinner("🔍 Analyzing with both models..."):
             # Original model processing
             start_time1 = time.time()
-            tokens = tokenizer.batch_encode_plus(
-                [input_text],
+            tokens = tokenizer(
+                input_text,
                 max_length=128,
                 padding='max_length',
                 truncation=True,
@@ -176,51 +189,33 @@ if st.button("🔎 Analyze Text", use_container_width=True):
             
             with col1:
                 st.markdown('<div class="model-card">', unsafe_allow_html=True)
-                st.subheader("🧠 Finetuned BERT Model")
-                st.markdown(f'<div class="metric-box">⏱️ Inference Time: {original_time:.2f}s</div>', unsafe_allow_html=True)
-                if real_prob1 > fake_prob1:
-                    st.success(f"✅ Real News ({real_prob1:.1f}% confidence)")
-                else:
-                    st.error(f"❌ Fake News ({fake_prob1:.1f}% confidence)")
+                st.subheader("🧠 Fine-tuned BERT")
+                st.markdown(f'<div class="metric-box">⏱️ Time: {original_time:.2f}s</div>', unsafe_allow_html=True)
+                st.success(f"✅ Real: {real_prob1:.1f}%") if real_prob1 > 50 else st.error(f"❌ Fake: {fake_prob1:.1f}%")
                 st.markdown('</div>', unsafe_allow_html=True)
             
             with col2:
                 st.markdown('<div class="model-card">', unsafe_allow_html=True)
-                st.subheader("🚀 Pretrained Bert Model")
-                st.markdown(f'<div class="metric-box">⏱️ Inference Time: {pipe_time:.2f}s</div>', unsafe_allow_html=True)
-                if label == "REAL":
-                    st.success(f"✅ {label} News ({confidence:.1f}% confidence)")
-                else:
-                    st.error(f"❌ {label} News ({confidence:.1f}% confidence)")
+                st.subheader("🚀 Pretrained BERT")
+                st.markdown(f'<div class="metric-box">⏱️ Time: {pipe_time:.2f}s</div>', unsafe_allow_html=True)
+                st.success(f"✅ {label}: {confidence:.1f}%") if label == "REAL" else st.error(f"❌ {label}: {confidence:.1f}%")
                 st.markdown('</div>', unsafe_allow_html=True)
 
             # Comparison section
             st.markdown('<div class="comparison-card">', unsafe_allow_html=True)
-            st.subheader("📊 Model Comparison")
+            st.subheader("📊 Performance Comparison")
             
             comp_col1, comp_col2, comp_col3 = st.columns(3)
             
             with comp_col1:
-                st.markdown(f'<div class="metric-box">\
-                    🏆 Confidence Difference<br>\
-                    <h3>{abs(real_prob1 - confidence):.1f}%</h3>\
-                    <small>Custom vs Pipeline</small></div>', 
-                    unsafe_allow_html=True)
+                st.metric("Confidence Difference", f"{abs(real_prob1 - confidence):.1f}%")
             
             with comp_col2:
-                st.markdown(f'<div class="metric-box">\
-                    ⚡ Speed Difference<br>\
-                    <h3>{abs(original_time - pipe_time):.2f}s</h3>\
-                    <small>Custom vs Pipeline</small></div>', 
-                    unsafe_allow_html=True)
+                st.metric("Speed Difference", f"{abs(original_time - pipe_time):.2f}s")
             
             with comp_col3:
-                winner = "Pipeline" if pipe_time < original_time else "Custom"
-                st.markdown(f'<div class="metric-box">\
-                    🏅 Faster Model<br>\
-                    <h3>{winner}</h3>\
-                    <small>Based on inference time</small></div>', 
-                    unsafe_allow_html=True)
+                fastest = "Pretrained" if pipe_time < original_time else "Fine-tuned"
+                st.metric("Fastest Model", fastest)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
