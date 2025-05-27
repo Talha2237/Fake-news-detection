@@ -10,7 +10,6 @@ import gdown
 import torch
 import streamlit as st
 import torch.nn as nn
-from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import AutoModel, BertTokenizerFast, pipeline
 
 os.environ["STREAMLIT_SERVER_ENABLE_FILE_WATCHER"] = "false"
