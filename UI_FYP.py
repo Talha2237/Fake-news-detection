@@ -32,8 +32,7 @@ st.set_page_config(
 def load_models():
     try:
         # Download custom model weights from Google Drive
-        file_id = "1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7"
-        url = f"https://drive.google.com/uc?id={file_id}"
+        url = f"https://drive.google.com/file/d/1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7/view?usp=sharing"
         output_path = "c1_fakenews_weights.pt"
         
         if not os.path.exists(output_path):
