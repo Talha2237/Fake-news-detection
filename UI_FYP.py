@@ -1,6 +1,4 @@
-
 import sys
-sys.modules['torch._classes'] = None  # Critical fix before any imports
 
 import warnings
 warnings.filterwarnings("ignore")  # Suppress all warnings
@@ -16,9 +14,8 @@ import torch.nn as nn
 from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import AutoModel, BertTokenizerFast, pipeline
 
-# Disable Streamlit file watcher
 os.environ["STREAMLIT_SERVER_ENABLE_FILE_WATCHER"] = "false"
-torch.__streamlit__ = False  # Block Streamlit's class inspection
+os.environ["PYTORCH_JIT"] = "0"
 
 
 # --------------------------
