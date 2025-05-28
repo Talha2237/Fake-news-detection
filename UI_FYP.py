@@ -1,5 +1,6 @@
+# MUST BE THE VERY FIRST LINES
 import sys
-
+sys.modules['torch._classes'] = None  # Critical fix before any imports
 import warnings
 warnings.filterwarnings("ignore")  # Suppress all warnings
 
@@ -15,7 +16,6 @@ from transformers import AutoModel, BertTokenizerFast, pipeline
 os.environ["STREAMLIT_SERVER_ENABLE_FILE_WATCHER"] = "false"
 os.environ["PYTORCH_JIT"] = "0"
 
-
 # --------------------------
 # STREAMLIT CONFIG
 # --------------------------
@@ -29,20 +29,19 @@ st.set_page_config(
 # MODEL LOADING (Cached)
 # --------------------------
 @st.cache_resource(show_spinner=False)
-@st.cache_resource(show_spinner=False)
 def load_models():
     try:
         # Clean up existing file
-        if os.path.exists("c1_fakenews_weights.pt"):
-            os.remove("c1_fakenews_weights.pt")
+        output_path = "c1_fakenews_weights.pt"
+        if os.path.exists(output_path):
+            os.remove(output_path)
         
         # Direct download URL
         file_id = "1u-GQq8Ei4_-ll5WOfb1XaQ3QRPsXAjR7"
         url = f"https://drive.google.com/uc?id={file_id}"
-        output_path = "c1_fakenews_weights.pt"
         
         # Download with progress
-        with st.spinner("📥 Downloading model weights (1.2GB)..."):
+        with st.spinner("📥 Downloading model weights (419MB)..."):
             gdown.download(url, output_path, quiet=False)
         
         # Verify download
@@ -55,13 +54,6 @@ def load_models():
             if b"<html>" in start_bytes.lower():
                 os.remove(output_path)
                 raise Exception("Downloaded HTML instead of model file!")
-
-        # Rest of your model loading code...
-        return model, tokenizer, pipe_model
-
-    except Exception as e:
-        st.error(f"🚨 Error: {str(e)}")
-        st.stop()
 
         # Load BERT base model
         from transformers import logging
@@ -103,7 +95,7 @@ def load_models():
         st.error(f"🚨 Model loading failed: {str(e)}")
         st.stop()
 
-# Initialize models
+# Initialize models - MOVE THIS AFTER FUNCTION DEFINITION
 model, tokenizer, pipe_model = load_models()
 
 # --------------------------
@@ -214,14 +206,20 @@ if st.button("🔎 Analyze Text", use_container_width=True):
                 st.markdown('<div class="model-card">', unsafe_allow_html=True)
                 st.subheader("🧠 Fine-tuned BERT")
                 st.markdown(f'<div class="metric-box">⏱️ Time: {original_time:.2f}s</div>', unsafe_allow_html=True)
-                st.success(f"✅ Real: {real_prob1:.1f}%") if real_prob1 > 50 else st.error(f"❌ Fake: {fake_prob1:.1f}%")
+                if real_prob1 > fake_prob1:
+                    st.success(f"✅ Real News ({real_prob1:.1f}% confidence)")
+                else:
+                    st.error(f"❌ Fake News ({fake_prob1:.1f}% confidence)")
                 st.markdown('</div>', unsafe_allow_html=True)
             
             with col2:
                 st.markdown('<div class="model-card">', unsafe_allow_html=True)
                 st.subheader("🚀 Pretrained BERT")
                 st.markdown(f'<div class="metric-box">⏱️ Time: {pipe_time:.2f}s</div>', unsafe_allow_html=True)
-                st.success(f"✅ {label}: {confidence:.1f}%") if label == "REAL" else st.error(f"❌ {label}: {confidence:.1f}%")
+                if label == "REAL":
+                    st.success(f"✅ {label} News ({confidence:.1f}% confidence)")
+                else:
+                    st.error(f"❌ {label} News ({confidence:.1f}% confidence)")
                 st.markdown('</div>', unsafe_allow_html=True)
 
             # Comparison section
