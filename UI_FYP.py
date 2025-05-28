@@ -9,6 +9,8 @@ import os
 import time
 import gdown
 import torch
+print(torch.__version__)
+print(torch.cuda.is_available())
 import streamlit as st
 import torch.nn as nn
 from transformers import AutoModel, BertTokenizerFast, pipeline
